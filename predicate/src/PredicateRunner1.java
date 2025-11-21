@@ -1,105 +1,87 @@
 import java.util.*;
-import java.util.function.Predicate;
+import java.util.function.*;
+import java.util.stream.Collectors;
 
-public class PredicateRunner1<T> {
+public class PredicateRunner1<T1> {
 
-    public static class Rule<T> {
-        String name;
-        Predicate<T> predicate;
+    private final List<Rule> rules;
+    private final Map<Integer, String> indexToName;
 
-        Rule(String name, Predicate<T> predicate) {
-            this.name = name;
-            this.predicate = predicate;
-        }
-    }
-
-    private final List<Rule<T>> rules;
-
-    public PredicateRunner1(List<Rule<T>> rules) {
+    public PredicateRunner1(List<Rule> rules) {
         this.rules = rules;
+        this.indexToName = rules.stream()
+                .collect(Collectors.toMap(r -> r.index, r -> r.name));
     }
 
-    /** Возвращает индекс правила которое прошло (или -1 если ничего не прошло) */
-    public int run(T value) {
-        for (int i = 0; i < rules.size(); i++) {
-            if (rules.get(i).predicate.test(value)) {
-                return i;
+    public int run(T1 a) {
+        Object[] args = new Object[]{a};
+        for (Rule rule : rules) {
+            if (rule.predicate.test(args)) {
+                rule.action.run();
+                return rule.index;
             }
         }
         return -1;
     }
 
-    public String getRuleName(int index) {
-        if (index < 0 || index >= rules.size()) return null;
-        return rules.get(index).name;
+    public String getRuleNameByIndex(int index) {
+        return indexToName.get(index);
     }
 
-    // =====================================================================
-    //                           BUILDER
-    // =====================================================================
+    // ---------------- BUILDER ----------------
 
-    public static class Builder<T> {
-
-        private final List<Rule<T>> rules = new ArrayList<>();
-
-        // building one rule
+    public static class Builder<T1> {
+        private final List<Rule> rules = new ArrayList<>();
         private String currentName;
-        private Predicate<T> currentPredicate;
-        private boolean isOrMode = false;
-        private boolean ruleStarted = false;
+        private Predicate<Object[]> currentPredicate;
+        private int index = 0;
 
-        public Builder<T> start(String name) {
-            if (ruleStarted) {
-                throw new IllegalStateException("Previous rule not finished, call then()");
-            }
-            this.currentName = name;
-            this.currentPredicate = null;
-            this.ruleStarted = true;
-            this.isOrMode = false;
+        private boolean waitingForWhen = false;
+        private boolean waitingForThen = false;
+
+        public Builder<T1> start(String name) {
+            if (waitingForThen)
+                throw new IllegalStateException("Must call then() before starting a new rule.");
+
+            currentName = name;
+            waitingForWhen = true;
             return this;
         }
 
-        private void validateRule() {
-            if (!ruleStarted)
-                throw new IllegalStateException("Call start() before adding predicates");
-            if (currentPredicate == null)
-                throw new IllegalStateException("Rule '" + currentName + "' has no predicates");
-        }
+        public Builder<T1> when(Predicate<T1> predicate) {
+            if (!waitingForWhen)
+                throw new IllegalStateException("start() must be called before when().");
 
-        public Builder<T> when(Predicate<T> p) {
-            if (!ruleStarted)
-                throw new IllegalStateException("Call start() first");
-
-            if (currentPredicate == null) {
-                currentPredicate = p;
-            } else {
-                currentPredicate = isOrMode
-                        ? currentPredicate.or(p)
-                        : currentPredicate.and(p);
-            }
+            this.currentPredicate = args -> predicate.test((T1) args[0]);
+            waitingForWhen = false;
+            waitingForThen = true;
             return this;
         }
 
-        public Builder<T> and() {
-            isOrMode = false;
+        public Builder<T1> and(Predicate<T1> other) {
+            currentPredicate = currentPredicate.and(args -> other.test((T1) args[0]));
             return this;
         }
 
-        public Builder<T> or() {
-            isOrMode = true;
+        public Builder<T1> or(Predicate<T1> other) {
+            currentPredicate = currentPredicate.or(args -> other.test((T1) args[0]));
             return this;
         }
 
-        public Builder<T> then() {
-            validateRule();
-            rules.add(new Rule<>(currentName, currentPredicate));
-            ruleStarted = false;
+        public Builder<T1> then(Runnable action) {
+            if (!waitingForThen)
+                throw new IllegalStateException("when() must be followed by then().");
+
+            rules.add(new Rule(currentName, index++, currentPredicate, action));
+            currentPredicate = null;
+            waitingForThen = false;
             return this;
         }
 
-        public PredicateRunner1<T> build() {
-            if (ruleStarted)
-                throw new IllegalStateException("Last rule not finished, call then()");
+        public PredicateRunner1<T1> build() {
+            if (waitingForThen)
+                throw new IllegalStateException("Last rule missing then().");
+
             return new PredicateRunner1<>(rules);
         }
     }
