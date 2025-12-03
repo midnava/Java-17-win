@@ -18,8 +18,8 @@ public class PredicateRunner1<T1> {
         }
     }
 
-    private final List<Rule<T1>> rules;
-    private final Map<Integer, String> indexToName;
+    protected final List<Rule<T1>> rules;
+    protected final Map<Integer, String> indexToName;
 
     private PredicateRunner1(List<Rule<T1>> rules) {
         this.rules = rules;
@@ -41,12 +41,12 @@ public class PredicateRunner1<T1> {
     }
 
     public static class Builder<T1> {
-        private final List<Rule<T1>> rules = new ArrayList<>();
-        private String currentName;
-        private Predicate<T1> currentPredicate;
-        private int index = 0;
-        private boolean waitingForWhen = false;
-        private boolean waitingForThen = false;
+        protected final List<Rule<T1>> rules = new ArrayList<>();
+        protected String currentName;
+        protected Predicate<T1> currentPredicate;
+        protected int index = 0;
+        protected boolean waitingForWhen = false;
+        protected boolean waitingForThen = false;
 
         public Builder<T1> start(String name) {
             if (waitingForThen) throw new IllegalStateException("Must call then() before starting new rule");
