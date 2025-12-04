@@ -48,7 +48,9 @@ public class FixMultiplexer {
     public RoutingResult handleOutbound(Message clientMsg, String clientSession) throws FieldNotFound {
         String msgType = clientMsg.getHeader().getString(35);
         OutRule rule = config.getOutRules().get(msgType);
-        if (rule == null) return new RoutingResult(clientSession, null, true);
+        if (rule == null) {
+            return new RoutingResult(clientSession, null, true);
+        }
 
         String id = rule.getIdExtractor().apply(clientMsg);
         String existingOwner = owners.getOwner(msgType, id);
@@ -58,10 +60,12 @@ public class FixMultiplexer {
                 if (existingOwner == null) {
                     owners.setOwnerIfEmpty(msgType, id, clientSession);
                     return new RoutingResult("MARKET", clientMsg, false);
+
                 } else if (existingOwner.equals(clientSession)) {
                     return new RoutingResult("MARKET", clientMsg, false);
                 } else {
                     Message reject = rule.getRejectFactory().createReject(clientMsg, "Already answered");
+
                     return new RoutingResult(clientSession, reject, true);
                 }
 
