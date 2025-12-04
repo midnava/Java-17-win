@@ -1,3 +1,5 @@
+package v1;
+
 import quickfix.Message;
 import quickfix.field.ClOrdID;
 import quickfix.field.MsgType;

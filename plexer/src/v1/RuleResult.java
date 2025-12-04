@@ -1,3 +1,5 @@
+package v1;
+
 public class RuleResult {
     private final RuleType type;
     private final String owner;
