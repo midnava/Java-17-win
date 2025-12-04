@@ -13,8 +13,13 @@ public class MultiplexerConfig {
         this.outRules = outRules;
     }
 
-    public InRule getInRule(String msgType) { return inRules.get(msgType); }
-    public OutRule getOutRule(String msgType) { return outRules.get(msgType); }
+    public InRule getInRule(String msgType) {
+        return inRules.get(msgType);
+    }
+
+    public OutRule getOutRule(String msgType) {
+        return outRules.get(msgType);
+    }
 
     public static class Builder {
 
